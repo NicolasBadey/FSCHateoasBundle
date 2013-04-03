@@ -4,9 +4,17 @@ namespace FSC\HateoasBundle\Serializer;
 
 use Symfony\Component\Form\FormView;
 use Symfony\Component\Form\Extension\Core\View\ChoiceView;
+use Symfony\Component\Translation\TranslatorInterface;
 
 class XmlFormViewSerializer
 {
+    protected $transaltor;
+
+    public function __construct (TranslatorInterface $transaltor)
+    {
+        $this->transaltor = $transaltor;
+    }
+
     protected static $baseTypes = array(
         'text', 'textarea', 'email', 'integer', 'money', 'number', 'password', 'percent', 'search', 'url', 'hidden',
         'collection', 'choice', 'checkbox', 'radio', 'datetime', 'date',
@@ -42,8 +50,7 @@ class XmlFormViewSerializer
             }
         }
 
-        if (null === $variables['label'])
-        {
+        if (null === $variables['label']) {
             $variables['label'] = $this->humanize($variables['name']);
         }
 
@@ -55,8 +62,7 @@ class XmlFormViewSerializer
             $this->serializeRestWidget($parentElement, $view, $variables);
         } else {
 
-            if (($type || 'widget' == $blockName) && false !== $variables['label'])
-            {
+            if (($type || 'widget' == $blockName) && false !== $variables['label']) {
                 $this->serializeLabel($parentElement, $type, $variables);
             }
 
@@ -89,12 +95,9 @@ class XmlFormViewSerializer
                     $this->serializeUrlWidget($parentElement, $view, $variables);
                     break;
                 case 'choice':
-                    if ($variables['expanded'])
-                    {
+                    if ($variables['expanded']) {
                         $this->serializeFieldset($parentElement, $view, $variables);
-                    }
-                    else
-                    {
+                    } else {
                         $this->serializeChoiceWidget($parentElement, $view, $variables);
                     }
 
@@ -129,7 +132,6 @@ class XmlFormViewSerializer
                             throw new \RuntimeException(__METHOD__.' Oups '.$view->vars['name'].' // '.$blockName);
                     }
             }
-
 
         }
 
@@ -169,8 +171,7 @@ class XmlFormViewSerializer
     /*
         {% if compound %}
             {{ block('form_widget_compound') }}
-        {% else %}
-            {{ block('form_widget_simple') }}
+        {% else { %}{ block('form_widget_simple') }}
         {% endif %}
     */
     protected function serializeFormWidget(\DOMElement $parentElement, FormView $view, $variables)
@@ -204,7 +205,8 @@ class XmlFormViewSerializer
 
     protected function serializeLabel(\DOMElement $parentElement, $type, $variables)
     {
-        $labelElement = $parentElement->ownerDocument->createElement('label',$variables['label']);
+        $translatedLabel = $this->transaltor->trans($variables['label']);
+        $labelElement = $parentElement->ownerDocument->createElement('label',$translatedLabel);
         $parentElement->appendChild($labelElement);
 
         $labelElement->setAttribute('for', $variables['id']);
@@ -222,8 +224,7 @@ class XmlFormViewSerializer
         {% for attrname, attrvalue in attr %}
             {% if attrname in ['placeholder', 'title'] %}
                 {{ attrname }}="{{ attrvalue|trans({}, translation_domain) }}"
-            {% else %}
-                {{ attrname }}="{{ attrvalue }}"
+            {% else { %}{ attrname }}="{{ attrvalue }}"
             {% endif %}
         {% endfor %}
     */
@@ -362,13 +363,11 @@ class XmlFormViewSerializer
     /*
         {% if expanded %}
             {{ block('choice_widget_expanded') }}
-        {% else %}
-            {{ block('choice_widget_collapsed') }}
+        {% else { %}{ block('choice_widget_collapsed') }}
         {% endif %}
     */
     protected function serializeChoiceWidget(\DOMElement $parentElement, FormView $view, $variables)
     {
-
         return isset($variables['expanded']) && $variables['expanded']
             ? $this->serializeChoiceWidgetExpanded($parentElement, $view, $variables)
             : $this->serializeChoiceWidgetCollapsed($parentElement, $view, $variables)
@@ -462,7 +461,8 @@ class XmlFormViewSerializer
                     'options' => $choiceView,
                 )));
             } else {
-                $optionElement = $selectElement->ownerDocument->createElement('option', $choiceView->label);
+                $translatedLabel = $this->transaltor->trans($choiceView->label);
+                $optionElement = $selectElement->ownerDocument->createElement('option', $translatedLabel);
                 $optionElement->setAttribute('value', $choiceView->value);
 
                 if ($this->isSelectedChoice($choiceView, $variables['value'])) {
