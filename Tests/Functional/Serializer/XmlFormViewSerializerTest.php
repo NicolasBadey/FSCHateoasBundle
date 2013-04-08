@@ -153,6 +153,7 @@ XML
         $translator = $this->getKernel()->getContainer()->get('translator');
         $xmlFormViewSerializer = new XmlFormViewSerializer($translator);
 
+
         $xmlFormViewSerializer->serialize($formView, $formElement = $this->createFormElement());
 
         $this->assertXmlElementEquals(<<<XML
@@ -191,7 +192,8 @@ XML
 
         $formView = $form->createView();
 
-        $xmlFormViewSerializer = new XmlFormViewSerializer();
+        $translator = $this->getKernel()->getContainer()->get('translator');
+        $xmlFormViewSerializer = new XmlFormViewSerializer($translator);
 
         $xmlFormViewSerializer->serialize($formView, $formElement = $this->createFormElement());
 
@@ -496,5 +498,4 @@ class availabilityFormType extends AbstractType
     {
         return 'availability';
     }
-
 }
