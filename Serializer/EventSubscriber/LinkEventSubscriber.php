@@ -5,9 +5,12 @@ namespace FSC\HateoasBundle\Serializer\EventSubscriber;
 use JMS\Serializer\EventDispatcher\EventSubscriberInterface;
 use JMS\Serializer\EventDispatcher\Events;
 use JMS\Serializer\EventDispatcher\Event;
+use JMS\Serializer\Metadata\ClassMetadata;
+use JMS\Serializer\Metadata\PropertyMetadata;
 
 use FSC\HateoasBundle\Factory\LinkFactoryInterface;
 use FSC\HateoasBundle\Serializer\LinkSerializationHelper;
+use FSC\HateoasBundle\Serializer\MetadataHelper;
 
 /**
  * Adds links to serialized objects based on hateoas metadata
@@ -33,13 +36,18 @@ class LinkEventSubscriber implements EventSubscriberInterface
 
     protected $linkFactory;
     protected $linkSerializationHelper;
+    protected $metadataHelper;
     protected $linksJsonKey;
+    protected $deferredLinks;
 
-    public function __construct(LinkFactoryInterface $linkFactory, LinkSerializationHelper $linkSerializationHelper, $linksJsonKey = null)
+    public function __construct(LinkFactoryInterface $linkFactory, LinkSerializationHelper $linkSerializationHelper,
+        MetadataHelper $metadataHelper, $linksJsonKey = null)
     {
         $this->linkFactory = $linkFactory;
         $this->linkSerializationHelper = $linkSerializationHelper;
+        $this->metadataHelper = $metadataHelper;
         $this->linksJsonKey = $linksJsonKey ?: 'links';
+        $this->deferredLinks = new \SplObjectStorage();
     }
 
     public function onPostSerializeXML(Event $event)
@@ -64,7 +72,32 @@ class LinkEventSubscriber implements EventSubscriberInterface
 
     public function getOnPostSerializeData(Event $event)
     {
-        if (null === ($links = $this->linkFactory->createLinks($event->getObject()))) {
+        $object = $event->getObject();
+        $context = $event->getContext();
+        $metadataStack = $context->getMetadataStack();
+        $visitingStack = $context->getVisitingStack();
+
+        $links = $this->linkFactory->createLinks($object);
+        if ($this->deferredLinks->contains($object)) {
+            // $object contains inlined objects that had links
+
+            $links = array_merge($this->deferredLinks->offsetGet($object), $links ?: array());
+            $this->deferredLinks->detach($object);
+        }
+
+        if (null === $links) {
+            return;
+        }
+
+        $parentObjectInlining = $this->metadataHelper->getParentObjectInlining($object, $context);
+        if (null !== $parentObjectInlining) {
+            if ($this->deferredLinks->contains($parentObjectInlining)) {
+                $links = array_merge($this->deferredLinks->offsetGet($parentObjectInlining), $links);
+            }
+
+            // We need to defer the links serialization to the $parentObject
+            $this->deferredLinks->attach($parentObjectInlining, $links);
+
             return;
         }
 

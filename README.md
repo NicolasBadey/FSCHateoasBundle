@@ -2,6 +2,8 @@ FSCHateoasBundle
 ================
 
 [![Build Status](https://secure.travis-ci.org/TheFootballSocialClub/FSCHateoasBundle.png)](http://travis-ci.org/TheFootballSocialClub/FSCHateoasBundle)
+[![Latest Stable Version](https://poser.pugx.org/fsc/hateoas-bundle/v/stable.png)](https://packagist.org/packages/fsc/hateoas-bundle)
+[![Total Downloads](https://poser.pugx.org/fsc/hateoas-bundle/downloads.png)](https://packagist.org/packages/fsc/hateoas-bundle)
 
 This bundle hooks into the JMSSerializerBundle serialization process, and provides HATEOAS features.
 Right now, only adding links is supported.
@@ -16,7 +18,7 @@ composer.json
 ```json
 {
     "require": {
-        "fsc/hateoas-bundle": "0.4.x-dev"
+        "fsc/hateoas-bundle": "0.5.x-dev"
     },
     "minimum-stability": "dev"
 }
@@ -55,10 +57,11 @@ use JMS\Serializer\Annotation as Serializer;
 use FSC\HateoasBundle\Annotation as Rest;
 
 /**
- * @Rest\Relation("self",      href = @Rest\Route("api_user_get", parameters = { "id" = ".id" }))
- * @Rest\Relation("alternate", href = @Rest\Route("user_profile", parameters = { "user_id" = ".id" }))
- * @Rest\Relation("users",     href = @Rest\Route("api_user_list"))
- * @Rest\Relation("rss",       href = "http://domain.com/users.rss")
+ * @Rest\Relation("self",               href = @Rest\Route("api_user_get", parameters = { "id" = ".id" }))
+ * @Rest\Relation("alternate",          href = @Rest\Route("user_profile", parameters = { "user_id" = ".id" }))
+ * @Rest\Relation("users",              href = @Rest\Route("api_user_list"))
+ * @Rest\Relation("rss",                href = "http://domain.com/users.rss")
+ * @Rest\Relation("from_property_path", href = ".dynamicHref")
  *
  * @Serializer\XmlRoot("user")
  */
@@ -67,8 +70,15 @@ class User
     /** @Serializer\XmlAttribute */
     public $id;
     public $username;
+
+    public function getDynamicHref() {
+        return "dynamic/Href/here";
+    }
 }
 ```
+
+Note that the href can either be a `@Route` annotation, a string, or a property path, which will be resolved
+when serializing.
 
 ### Usage
 
@@ -235,7 +245,7 @@ use Pagerfanta\Adapter\DoctrineORMAdapter;
 public function getListAction($page = 1, $limit = 10)
 {
     $query = $this->get('doctrine')->getRepository('User')->createQueryXXX();
-    $pager = new Pagerfanta(new DoctrineORMPager($results)); // or any Pagerfanta adapter
+    $pager = new Pagerfanta(new DoctrineORMAdapter($results)); // or any Pagerfanta adapter
     $pager->setCurrentPage($page);
     $pager->setMaxPerPage($limit);
 
@@ -282,7 +292,7 @@ public function getListAction(Request $request, $page = 1, $limit = 10)
     $pager->setCurrentPage($page);
     $pager->setMaxPerPage($limit);
 
-    $this->get('fsc_hateoas.metadata.relations_manager')->addBasicRelations($postsPager); // Automatically add self/first/last/prev/next links
+    $this->get('fsc_hateoas.metadata.relations_manager')->addBasicRelations($pager); // Automatically add self/first/last/prev/next links
 
     $this->get('serializer')->getSerializationVisitor('xml')->setDefaultRootName('users');
 
@@ -340,7 +350,7 @@ class UserController extends Controller
     {
         $pager = $this->get('acme.foo.user_manager')->getUserFriendsPager($id, $page, $limit);
 
-        $this->get('fsc_hateoas.metadata.relations_manager')->addBasicRelations($postsPager); // Automatically add self/first/last/prev/next links
+        $this->get('fsc_hateoas.metadata.relations_manager')->addBasicRelations($pager); // Automatically add self/first/last/prev/next links
 
         $this->get('serializer')->getSerializationVisitor('xml')->setDefaultRootName('users');
 

@@ -4,9 +4,9 @@ namespace FSC\HateoasBundle\Tests\Functional\TestBundle\Model;
 
 class User
 {
-    private $id;
-    private $firstName;
-    private $lastName;
+    protected $id;
+    protected $firstName;
+    protected $lastName;
 
     public function setId($id)
     {
@@ -46,5 +46,10 @@ class User
         $user->setLastName($lastName);
 
         return $user;
+    }
+
+    public function getDynamicHref()
+    {
+        return "this/is/a/href/from/a/property_path";
     }
 }
